@@ -1,17 +1,47 @@
 # Brute Force Detector
 
-A Python-based SOC tool that detects brute force login attempts using **Azure Log Analytics** sign-in data and enriches flagged IPs with **AbuseIPDB** threat intelligence.
+A Python-based SOC tool that detects brute force login attempts using **Azure Log Analytics** sign-in data, enriches flagged IPs with **AbuseIPDB** threat intelligence, and displays results in a live web dashboard.
 
-Built as part of a real-world Cyber Range environment with 1,600+ users and live attack traffic.
+Built inside a real-world Cyber Range environment (LOG(N) Pacific) with 1,600+ users and live internet-facing attack traffic.
 
 ---
 
 ## How It Works
 
-1. Pulls failed Azure AD sign-in logs from Log Analytics (via KQL)
+1. Pulls failed Azure AD sign-in logs from Log Analytics using KQL (`SigninLogs`)
 2. Applies a sliding time-window algorithm to detect IPs exceeding a failure threshold
-3. Enriches flagged IPs with AbuseIPDB reputation data (confidence score, country, ISP)
-4. Outputs a formatted console report and saves a timestamped CSV
+3. Enriches flagged IPs with AbuseIPDB reputation data (abuse score, country, ISP)
+4. Displays results in a SOC-style web dashboard with day-range toggle
+5. Saves a timestamped CSV report on every scan
+
+---
+
+## Web Dashboard
+
+Run the Flask web server to access the dashboard:
+
+```bash
+python app.py
+```
+
+Open your browser to **http://localhost:5000**
+
+**Dashboard features:**
+- Day toggle — scan 1, 3, 7, 14, or 30 days of log data
+- Summary cards — Total Failed Logins, Flagged IPs, Known Malicious, Top Attacker
+- Results table — IP, failure count, targeted account, target device, country, ISP, abuse score, status badge
+- Color-coded abuse score badges (red / yellow / green)
+- CSV report saved on every scan
+
+---
+
+## CLI Mode
+
+Run without the web server for a quick terminal report:
+
+```bash
+python main.py
+```
 
 ---
 
@@ -22,15 +52,24 @@ Built as part of a real-world Cyber Range environment with 1,600+ users and live
 pip install -r requirements.txt
 ```
 
-### 2. Configure credentials
-Edit `config.py` and fill in:
-- Azure Tenant ID, Client ID, Client Secret
-- Azure Log Analytics Workspace ID
-- AbuseIPDB API key (free at [abuseipdb.com](https://www.abuseipdb.com))
-
-### 3. Run
+### 2. Log into Azure CLI
 ```bash
-python main.py
+az login
+```
+Sign in with your Cyber Range Azure account. No service principal needed — authentication uses your existing session.
+
+### 3. Configure `config.py`
+```python
+AZURE_WORKSPACE_ID  = "your-log-analytics-workspace-id"
+ABUSEIPDB_API_KEY   = "your-abuseipdb-api-key"
+```
+
+Get your free AbuseIPDB API key at [abuseipdb.com](https://www.abuseipdb.com).
+
+### 4. Run
+```bash
+python app.py        # Web dashboard at http://localhost:5000
+python main.py       # CLI report
 ```
 
 ---
@@ -39,33 +78,46 @@ python main.py
 
 | Setting | Default | Description |
 |---|---|---|
-| `FAILED_LOGIN_THRESHOLD` | 5 | Failed logins needed to flag an IP |
-| `TIME_WINDOW_MINUTES` | 10 | Rolling window duration |
-| `ABUSEIPDB_CONFIDENCE_MIN` | 25 | Minimum abuse score to mark as malicious |
-| `LOOKBACK_HOURS` | 24 | How far back to query Azure logs |
+| `AZURE_WORKSPACE_ID` | — | Your Log Analytics Workspace ID |
+| `ABUSEIPDB_API_KEY` | — | AbuseIPDB API key for IP reputation lookups |
+| `FAILED_LOGIN_THRESHOLD` | 5 | Failed logins within the window to flag an IP |
+| `TIME_WINDOW_MINUTES` | 10 | Rolling detection window (minutes) |
+| `ABUSEIPDB_CONFIDENCE_MIN` | 25 | Minimum abuse score (%) to mark as malicious |
+| `LOOKBACK_HOURS` | 24 | Default hours of log history to query |
 
 ---
 
 ## Project Structure
 
 ```
-main.py           # Entry point
-azure_logs.py     # Azure Log Analytics connection and KQL query
-detector.py       # Brute force pattern detection logic
-ip_enrichment.py  # AbuseIPDB threat intelligence lookup
-report.py         # Console and CSV report generation
-config.py         # All credentials and thresholds (edit this)
+main.py              # CLI entry point
+app.py               # Flask web server (dashboard)
+azure_logs.py        # Azure Log Analytics connection and KQL query
+detector.py          # Sliding-window brute force detection algorithm
+ip_enrichment.py     # AbuseIPDB threat intelligence IP lookup
+report.py            # Console and CSV report generation
+config.py            # Credentials and thresholds (gitignored)
+templates/
+  index.html         # SOC-style web dashboard UI
+requirements.txt     # Python dependencies
 ```
 
 ---
 
-## Azure Setup Required
+## Data Source
 
-You need a **Service Principal** in Azure with read access to your Log Analytics Workspace:
+| Source | Table | Data |
+|---|---|---|
+| Azure Log Analytics | `SigninLogs` | Failed Azure AD authentication attempts |
+| AbuseIPDB API | — | IP reputation, abuse history, ISP, country |
 
-```bash
-az ad sp create-for-rbac --name "BruteForceDetector" --role "Log Analytics Reader" \
-  --scopes /subscriptions/{subscription-id}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{workspace}
-```
+> **Note:** VM-level brute force (EventID 4625) requires Windows audit policy and Log Analytics agent configured on each VM. The Cyber Range admin can enable this to add RDP/SMB brute force detection.
 
-This outputs your `clientId`, `clientSecret`, and `tenantId` for `config.py`.
+---
+
+## Environment
+
+- **Platform:** Azure (LOG(N) Pacific Cyber Range)
+- **Users:** 1,600+
+- **Exposure:** Internet-facing — real external attackers generate live data
+- **Auth:** Azure CLI (`az login`) — no secrets stored in code
