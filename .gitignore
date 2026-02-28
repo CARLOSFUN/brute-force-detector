@@ -1,0 +1,15 @@
+# Ignore generated reports
+brute_force_report_*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.env/
+
+# IDE files
+.vscode/
+.idea/
