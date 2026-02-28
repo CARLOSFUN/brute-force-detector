@@ -145,7 +145,7 @@
             <th>IP Address</th>
             <th>Failures</th>
             <th>Window Start</th>
-            <th>Targeted Account</th>
+            <th>Accounts Hit</th>
             <th>Country</th>
             <th>ISP</th>
             <th>Abuse Score</th>
@@ -315,7 +315,8 @@
         }
 
         const windowStart = ip.WindowStart ? ip.WindowStart.replace("T", " ").split(".")[0] : "N/A";
-        const account = ip.TargetedAccounts || "N/A";
+        const accountCount = ip.UniqueAccountsTargeted || 0;
+        const accountDisplay = accountCount === 1 ? "1 account" : `${accountCount} accounts`;
         const country = ip.Country || "N/A";
         const mitreID = ip.MitreID || "";
         const mitreName = ip.MitreTechnique || "";
@@ -328,7 +329,7 @@
           <td><span class="ip-mono">${ip.IPAddress}</span></td>
           <td><strong>${ip.FailureCount}</strong> <small class="text-muted">in ${ip.WindowMinutes}m</small></td>
           <td><small>${windowStart}</small></td>
-          <td><div class="account-text">${account}</div></td>
+          <td><span style="color:#c9d1d9;">${accountDisplay}</span></td>
           <td><small>${country}</small></td>
           <td><small>${ip.ISP || "N/A"}</small></td>
           <td>${scoreBadge}</td>

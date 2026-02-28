@@ -2,7 +2,7 @@
 
 A Python-based SOC tool that detects brute force login attempts using **Azure Log Analytics** sign-in data, enriches flagged IPs with **AbuseIPDB** threat intelligence, and displays results in a live web dashboard.
 
-Built inside a real-world Cyber Range environment (LOG(N) Pacific) with 1,600+ users and live internet-facing attack traffic.
+Built against a live Azure environment with real internet-facing attack traffic.
 
 ---
 
@@ -10,15 +10,14 @@ Built inside a real-world Cyber Range environment (LOG(N) Pacific) with 1,600+ u
 
 1. Pulls failed Azure AD sign-in logs from Log Analytics using KQL (`SigninLogs`)
 2. Applies a sliding time-window algorithm to detect IPs exceeding a failure threshold
-3. Enriches flagged IPs with AbuseIPDB reputation data (abuse score, country, ISP)
-4. Displays results in a SOC-style web dashboard with day-range toggle
-5. Saves a timestamped CSV report on every scan
+3. Classifies each attack using the **MITRE ATT&CK** framework (T1110.001 / T1110.003 / T1110.004)
+4. Enriches flagged IPs with AbuseIPDB reputation data (abuse score, country, ISP)
+5. Displays results in a SOC-style web dashboard with day-range toggle
+6. Saves a timestamped CSV report on every scan
 
 ---
 
 ## Web Dashboard
-
-Run the Flask web server to access the dashboard:
 
 ```bash
 python app.py
@@ -28,16 +27,16 @@ Open your browser to **http://localhost:5000**
 
 **Dashboard features:**
 - Day toggle — scan 1, 3, 7, 14, or 30 days of log data
-- Summary cards — Total Failed Logins, Flagged IPs, Known Malicious, Top Attacker
-- Results table — IP, failure count, targeted account, target device, country, ISP, abuse score, status badge
+- Summary cards — Total Failed Logins, Flagged IPs, Known Malicious, Top Attacker IP
+- Attack Timeline chart — failed login volume per hour
+- Top Attacking IPs chart — ranked bar of highest-volume attackers
+- Results table — IP, failure count, accounts targeted, country, ISP, abuse score, MITRE tag, status
 - Color-coded abuse score badges (red / yellow / green)
-- CSV report saved on every scan
+- CSV report saved locally on every scan
 
 ---
 
 ## CLI Mode
-
-Run without the web server for a quick terminal report:
 
 ```bash
 python main.py
@@ -56,7 +55,7 @@ pip install -r requirements.txt
 ```bash
 az login
 ```
-Sign in with your Cyber Range Azure account. No service principal needed — authentication uses your existing session.
+No service principal needed — authentication uses your existing Azure CLI session.
 
 ### 3. Configure `config.py`
 ```python
@@ -87,37 +86,50 @@ python main.py       # CLI report
 
 ---
 
+## MITRE ATT&CK Classification
+
+Each flagged IP is automatically classified based on attack pattern:
+
+| Technique | ID | Trigger |
+|---|---|---|
+| Password Guessing | T1110.001 | One account targeted repeatedly |
+| Password Spraying | T1110.003 | Many accounts, few attempts each |
+| Credential Stuffing | T1110.004 | Many accounts, high attempt volume |
+
+---
+
 ## Project Structure
 
 ```
 main.py              # CLI entry point
 app.py               # Flask web server (dashboard)
 azure_logs.py        # Azure Log Analytics connection and KQL query
-detector.py          # Sliding-window brute force detection algorithm
+detector.py          # Sliding-window brute force detection + MITRE tagging
 ip_enrichment.py     # AbuseIPDB threat intelligence IP lookup
 report.py            # Console and CSV report generation
 config.py            # Credentials and thresholds (gitignored)
 templates/
   index.html         # SOC-style web dashboard UI
+reports/             # Timestamped CSV reports (gitignored)
 requirements.txt     # Python dependencies
 ```
 
 ---
 
-## Data Source
+## Data Sources
 
 | Source | Table | Data |
 |---|---|---|
 | Azure Log Analytics | `SigninLogs` | Failed Azure AD authentication attempts |
 | AbuseIPDB API | — | IP reputation, abuse history, ISP, country |
 
-> **Note:** VM-level brute force (EventID 4625) requires Windows audit policy and Log Analytics agent configured on each VM. The Cyber Range admin can enable this to add RDP/SMB brute force detection.
+> **Note:** VM-level brute force (EventID 4625) can be added by enabling Windows audit logon failure policy and connecting VMs to the Log Analytics workspace.
 
 ---
 
-## Environment
+## Requirements
 
-- **Platform:** Azure (LOG(N) Pacific Cyber Range)
-- **Users:** 1,600+
-- **Exposure:** Internet-facing — real external attackers generate live data
-- **Auth:** Azure CLI (`az login`) — no secrets stored in code
+- Python 3.8+
+- Azure account with Log Analytics workspace
+- Log Analytics Reader role on the workspace
+- Free AbuseIPDB account
