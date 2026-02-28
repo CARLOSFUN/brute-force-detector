@@ -5,7 +5,13 @@ from azure.monitor.query import LogsQueryClient, LogsQueryStatus
 from azure.identity import AzureCliCredential
 from datetime import timedelta
 import pandas as pd
+import os
 import config
+
+# Ensure Azure CLI is on the PATH regardless of which terminal is used
+_AZ_PATH = r"C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin"
+if _AZ_PATH not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + _AZ_PATH
 
 
 def get_credential():
