@@ -38,7 +38,7 @@ def fetch_failed_logins():
 
     if response.status == LogsQueryStatus.SUCCESS:
         data = response.tables[0]
-        df = pd.DataFrame(data.rows, columns=[col.name for col in data.columns])
+        df = pd.DataFrame(data.rows, columns=data.columns)
         print(f"[azure_logs] Fetched {len(df)} failed login events from the last {config.LOOKBACK_HOURS}h")
         return df
     else:
