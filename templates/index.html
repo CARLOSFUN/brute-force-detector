@@ -45,6 +45,13 @@
     .mitre-badge { background: #6e40c91a; color: #bc8cff; border: 1px solid #6e40c9; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-family: monospace; text-decoration: none; }
     .mitre-badge:hover { background: #6e40c933; color: #d2a8ff; }
 
+    .account-toggle { cursor: pointer; color: #58a6ff; font-size: 0.82rem; user-select: none; white-space: nowrap; }
+    .account-toggle:hover { color: #79c0ff; }
+    .account-toggle::after { content: " ▸"; font-size: 0.7rem; }
+    .account-toggle.open::after { content: " ▾"; }
+    .account-detail { display: none; margin-top: 5px; font-size: 0.73rem; color: #8b949e; word-break: break-all; max-width: 220px; line-height: 1.5; }
+    .account-detail.open { display: block; }
+
     .spinner-border { width: 1.2rem; height: 1.2rem; border-width: 2px; }
     .scan-time { color: #8b949e; font-size: 0.82rem; }
     .empty-state { color: #8b949e; padding: 40px 0; text-align: center; font-size: 0.95rem; }
@@ -168,6 +175,13 @@
   let selectedDays = 1;
   let timelineChart = null;
   let topIpChart = null;
+
+  function toggleAccount(id) {
+    const detail = document.getElementById(id);
+    const toggle = detail.previousElementSibling;
+    detail.classList.toggle("open");
+    toggle.classList.toggle("open");
+  }
 
   const chartDefaults = {
     responsive: true,
@@ -316,7 +330,12 @@
 
         const windowStart = ip.WindowStart ? ip.WindowStart.replace("T", " ").split(".")[0] : "N/A";
         const accountCount = ip.UniqueAccountsTargeted || 0;
-        const accountDisplay = accountCount === 1 ? "1 account" : `${accountCount} accounts`;
+        const accountLabel = accountCount === 1 ? "1 account" : `${accountCount} accounts`;
+        const accountNames = (ip.TargetedAccounts || "").split(", ").filter(a => a).map(a => `<div>${a}</div>`).join("");
+        const rowId = `acc-${Math.random().toString(36).substr(2, 8)}`;
+        const accountCell = `
+          <span class="account-toggle" onclick="toggleAccount('${rowId}')">${accountLabel}</span>
+          <div class="account-detail" id="${rowId}">${accountNames}</div>`;
         const country = ip.Country || "N/A";
         const mitreID = ip.MitreID || "";
         const mitreName = ip.MitreTechnique || "";
@@ -329,7 +348,7 @@
           <td><span class="ip-mono">${ip.IPAddress}</span></td>
           <td><strong>${ip.FailureCount}</strong> <small class="text-muted">in ${ip.WindowMinutes}m</small></td>
           <td><small>${windowStart}</small></td>
-          <td><span style="color:#c9d1d9;">${accountDisplay}</span></td>
+          <td>${accountCell}</td>
           <td><small>${country}</small></td>
           <td><small>${ip.ISP || "N/A"}</small></td>
           <td>${scoreBadge}</td>
