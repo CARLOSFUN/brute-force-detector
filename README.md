@@ -55,7 +55,7 @@ cd brute-force-detector
 
 Then follow the setup steps below.
 
-> **Note:** `config.py` is not included in the repo for security reasons. You will need to create it manually using the template in the Configuration section below.
+> **Note:** `config.py` is not included in the repo for security reasons. Copy `config.example.py` to `config.py` and fill in your values.
 
 ---
 
@@ -73,6 +73,10 @@ az login
 No service principal needed — authentication uses your existing Azure CLI session.
 
 ### 3. Configure `config.py`
+```bash
+cp config.example.py config.py
+```
+Then open `config.py` and fill in your values:
 ```python
 AZURE_WORKSPACE_ID  = "your-log-analytics-workspace-id"
 ABUSEIPDB_API_KEY   = "your-abuseipdb-api-key"
@@ -122,7 +126,8 @@ azure_logs.py        # Azure Log Analytics connection and KQL query
 detector.py          # Sliding-window brute force detection + MITRE tagging
 ip_enrichment.py     # AbuseIPDB threat intelligence IP lookup
 report.py            # Console and CSV report generation
-config.py            # Credentials and thresholds (gitignored)
+config.py            # Credentials and thresholds (gitignored — not in repo)
+config.example.py    # Template — copy to config.py and fill in your values
 templates/
   index.html         # SOC-style web dashboard UI
 reports/             # Timestamped CSV reports (gitignored)
