@@ -21,9 +21,11 @@ def get_credential():
 
 def fetch_failed_logins(lookback_hours=None):
     """
-    Query Azure Log Analytics for failed sign-in events.
-    Returns a DataFrame with columns: TimeGenerated, IPAddress, UserPrincipalName,
-    ResultDescription, Location, DeviceName, OperatingSystem
+    Query Azure Log Analytics for failed Azure AD sign-in events (SigninLogs).
+    Returns a DataFrame with columns: TimeGenerated, IPAddress, Account, Computer, LogonType
+
+    Note: VM-level EventID 4625 logging is not enabled in this Cyber Range workspace.
+    SigninLogs captures real external brute force attempts against Azure AD accounts.
     """
     if lookback_hours is None:
         lookback_hours = config.LOOKBACK_HOURS
@@ -31,14 +33,18 @@ def fetch_failed_logins(lookback_hours=None):
     credential = get_credential()
     client = LogsQueryClient(credential)
 
-    # KQL query — pulls failed Azure AD sign-ins including device details
+    # KQL query — pulls failed Azure AD sign-ins from external attackers
+    # ResultType != 0 means failed authentication
+    # Includes VM name via DeviceDetail where available
     query = """
     SigninLogs
     | where TimeGenerated >= ago({hours}h)
     | where ResultType != "0"
-    | project TimeGenerated, IPAddress, UserPrincipalName, ResultType, ResultDescription, Location,
-              DeviceName = tostring(DeviceDetail.displayName),
-              OperatingSystem = tostring(DeviceDetail.operatingSystem)
+    | project TimeGenerated,
+              IPAddress,
+              Account = UserPrincipalName,
+              Computer = tostring(DeviceDetail.displayName),
+              LogonType = "AzureAD"
     | order by TimeGenerated desc
     """.format(hours=lookback_hours)
 

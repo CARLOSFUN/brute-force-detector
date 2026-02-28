@@ -36,9 +36,8 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
                 window_start = t
 
         if max_count >= config.FAILED_LOGIN_THRESHOLD:
-            targeted_accounts = group["UserPrincipalName"].unique().tolist()
-            device_names = [d for d in group["DeviceName"].unique().tolist() if d]
-            operating_systems = [o for o in group["OperatingSystem"].unique().tolist() if o]
+            targeted_accounts = group["Account"].unique().tolist()
+            targeted_vms = [v for v in group["Computer"].unique().tolist() if v]
             flagged.append({
                 "IPAddress": ip,
                 "FailureCount": max_count,
@@ -46,9 +45,7 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
                 "WindowMinutes": config.TIME_WINDOW_MINUTES,
                 "TargetedAccounts": ", ".join(targeted_accounts),
                 "UniqueAccountsTargeted": len(targeted_accounts),
-                "DevicesUsed": ", ".join(device_names) if device_names else "Unknown",
-                "OperatingSystems": ", ".join(operating_systems) if operating_systems else "Unknown",
-                "Location": group["Location"].mode()[0] if not group["Location"].empty else "Unknown"
+                "TargetedVMs": ", ".join(targeted_vms) if targeted_vms else "Unknown",
             })
 
     if flagged:

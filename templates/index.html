@@ -119,9 +119,8 @@
             <th>Failures</th>
             <th>Window Start</th>
             <th>Targeted Account</th>
-            <th>Device</th>
-            <th>OS</th>
-            <th>Location</th>
+            <th>Target VM</th>
+            <th>Country</th>
             <th>ISP</th>
             <th>Abuse Score</th>
             <th>Status</th>
@@ -129,7 +128,7 @@
         </thead>
         <tbody id="resultsBody">
           <tr>
-            <td colspan="10" class="empty-state">Run a scan to see results.</td>
+            <td colspan="9" class="empty-state">Run a scan to see results.</td>
           </tr>
         </tbody>
       </table>
@@ -158,7 +157,7 @@
     scanBtn.disabled = true;
     scanBtnText.textContent = "Scanning...";
     scanSpinner.classList.remove("d-none");
-    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">Fetching live data from Azure...</td></tr>`;
+    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">Fetching live data from Azure...</td></tr>`;
 
     try {
       const res = await fetch("/scan", {
@@ -170,7 +169,7 @@
       const data = await res.json();
 
       if (data.error) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
         return;
       }
 
@@ -183,7 +182,7 @@
 
       // Build table rows
       if (!data.flagged_ips || data.flagged_ips.length === 0) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">No brute force activity detected in this period.</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">No brute force activity detected in this period.</td></tr>`;
         return;
       }
 
@@ -207,18 +206,16 @@
 
         const windowStart = ip.WindowStart ? ip.WindowStart.replace("T", " ").split(".")[0] : "N/A";
         const account = ip.TargetedAccounts || "N/A";
-        const device = ip.DevicesUsed || "Unknown";
-        const os = ip.OperatingSystems || "Unknown";
-        const location = [ip.Location, ip.Country].filter(v => v && v !== "N/A").join(" / ") || "N/A";
+        const targetVMs = ip.TargetedVMs || "Unknown";
+        const country = ip.Country || "N/A";
 
         return `<tr>
           <td><span class="ip-mono">${ip.IPAddress}</span></td>
           <td><strong>${ip.FailureCount}</strong> <small class="text-muted">in ${ip.WindowMinutes}m</small></td>
           <td><small>${windowStart}</small></td>
           <td><div class="account-text">${account}</div></td>
-          <td><small>${device}</small></td>
-          <td><small>${os}</small></td>
-          <td><small>${location}</small></td>
+          <td><small>${targetVMs}</small></td>
+          <td><small>${country}</small></td>
           <td><small>${ip.ISP || "N/A"}</small></td>
           <td>${scoreBadge}</td>
           <td>${statusBadge}</td>
@@ -228,7 +225,7 @@
       document.getElementById("resultsBody").innerHTML = rows;
 
     } catch (err) {
-      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Failed to connect to server: ${err.message}</td></tr>`;
+      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state text-danger">Failed to connect to server: ${err.message}</td></tr>`;
     } finally {
       scanBtn.disabled = false;
       scanBtnText.textContent = "▶ Run Scan";
