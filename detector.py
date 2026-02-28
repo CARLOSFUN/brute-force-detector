@@ -37,7 +37,6 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
 
         if max_count >= config.FAILED_LOGIN_THRESHOLD:
             targeted_accounts = group["Account"].unique().tolist()
-            targeted_vms = [v for v in group["Computer"].unique().tolist() if v]
 
             # MITRE ATT&CK T1110 sub-technique classification
             unique_count = len(targeted_accounts)
@@ -62,7 +61,6 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
                 "WindowMinutes": config.TIME_WINDOW_MINUTES,
                 "TargetedAccounts": ", ".join(targeted_accounts),
                 "UniqueAccountsTargeted": len(targeted_accounts),
-                "TargetedVMs": ", ".join(targeted_vms) if targeted_vms else "Unknown",
                 "MitreID": mitre_id,
                 "MitreTechnique": mitre_name,
             })

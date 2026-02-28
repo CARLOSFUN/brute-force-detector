@@ -60,6 +60,10 @@ def scan():
             chart_labels = hourly["TimeGenerated"].dt.strftime("%m/%d %H:%M").tolist()
             chart_values = hourly["count"].tolist()
 
+        # Top attacking IPs by failure count (for bar chart)
+        top_attacker_labels = enriched["IPAddress"].head(5).tolist() if not enriched.empty else []
+        top_attacker_values = enriched["FailureCount"].head(5).tolist() if not enriched.empty else []
+
         return jsonify({
             "scan_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "days": days,
@@ -70,6 +74,8 @@ def scan():
             "flagged_ips": df_to_records(enriched),
             "chart_labels": chart_labels,
             "chart_values": chart_values,
+            "top_attacker_labels": top_attacker_labels,
+            "top_attacker_values": top_attacker_values,
         })
 
     except Exception as e:

@@ -26,7 +26,6 @@ def print_console_report(df: pd.DataFrame):
         print(f"Window Start     : {row['WindowStart']}")
         print(f"Accounts Targeted: {row['TargetedAccounts']}")
         print(f"Unique Accounts  : {row['UniqueAccountsTargeted']}")
-        print(f"Target VMs       : {row.get('TargetedVMs', 'N/A')}")
         print(f"Country (IPDB)   : {row.get('Country', 'N/A')}")
         print(f"ISP              : {row.get('ISP', 'N/A')}")
         print(f"Usage Type       : {row.get('UsageType', 'N/A')}")

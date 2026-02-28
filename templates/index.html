@@ -113,11 +113,25 @@
     </div>
   </div>
 
-  <!-- Attack Timeline Chart -->
-  <div class="card p-3 mb-4" id="chartCard" style="display:none;">
-    <div class="section-label mb-3">Failed Login Activity</div>
-    <div class="chart-container">
-      <canvas id="attackChart"></canvas>
+  <!-- Charts Row -->
+  <div class="row g-3 mb-4" id="chartsRow" style="display:none;">
+    <div class="col-md-7">
+      <div class="card p-3 h-100">
+        <div class="section-label mb-1">Attack Timeline</div>
+        <small class="text-muted d-block mb-3" style="font-size:0.75rem;">Failed logins per hour — shows when attacks peak</small>
+        <div class="chart-container">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card p-3 h-100">
+        <div class="section-label mb-1">Top Attacking IPs</div>
+        <small class="text-muted d-block mb-3" style="font-size:0.75rem;">Ranked by failure count — highest priority to block</small>
+        <div class="chart-container">
+          <canvas id="topIpChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -132,7 +146,6 @@
             <th>Failures</th>
             <th>Window Start</th>
             <th>Targeted Account</th>
-            <th>Target VM</th>
             <th>Country</th>
             <th>ISP</th>
             <th>Abuse Score</th>
@@ -153,7 +166,23 @@
 
 <script>
   let selectedDays = 1;
-  let attackChart = null;
+  let timelineChart = null;
+  let topIpChart = null;
+
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#161b22",
+        borderColor: "#30363d",
+        borderWidth: 1,
+        titleColor: "#c9d1d9",
+        bodyColor: "#8b949e",
+      }
+    }
+  };
 
   // Day toggle
   document.getElementById("dayToggle").addEventListener("click", function(e) {
@@ -164,20 +193,18 @@
     selectedDays = parseInt(btn.dataset.days);
   });
 
-  function renderChart(labels, values) {
-    const card = document.getElementById("chartCard");
-    card.style.display = "block";
+  function renderCharts(data) {
+    document.getElementById("chartsRow").style.display = "flex";
 
-    if (attackChart) attackChart.destroy();
-
-    const ctx = document.getElementById("attackChart").getContext("2d");
-    attackChart = new Chart(ctx, {
+    // --- Timeline Chart ---
+    if (timelineChart) timelineChart.destroy();
+    timelineChart = new Chart(document.getElementById("timelineChart").getContext("2d"), {
       type: "bar",
       data: {
-        labels: labels,
+        labels: data.chart_labels,
         datasets: [{
           label: "Failed Logins",
-          data: values,
+          data: data.chart_values,
           backgroundColor: "rgba(31, 111, 235, 0.5)",
           borderColor: "#388bfd",
           borderWidth: 1,
@@ -185,28 +212,37 @@
         }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: "#161b22",
-            borderColor: "#30363d",
-            borderWidth: 1,
-            titleColor: "#c9d1d9",
-            bodyColor: "#8b949e",
-          }
-        },
+        ...chartDefaults,
         scales: {
-          x: {
-            ticks: { color: "#8b949e", font: { size: 10 }, maxRotation: 45 },
-            grid: { color: "#21262d" }
-          },
-          y: {
-            ticks: { color: "#8b949e", font: { size: 11 } },
-            grid: { color: "#21262d" },
-            beginAtZero: true
-          }
+          x: { ticks: { color: "#8b949e", font: { size: 10 }, maxRotation: 45 }, grid: { color: "#21262d" } },
+          y: { ticks: { color: "#8b949e", font: { size: 11 } }, grid: { color: "#21262d" }, beginAtZero: true }
+        }
+      }
+    });
+
+    // --- Top Attacking IPs Chart ---
+    if (topIpChart) topIpChart.destroy();
+    // Shorten long IPv6 labels for readability
+    const ipLabels = data.top_attacker_labels.map(ip => ip.length > 20 ? ip.substring(0, 18) + "…" : ip);
+    topIpChart = new Chart(document.getElementById("topIpChart").getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: ipLabels,
+        datasets: [{
+          label: "Failures",
+          data: data.top_attacker_values,
+          backgroundColor: "rgba(248, 81, 73, 0.5)",
+          borderColor: "#f85149",
+          borderWidth: 1,
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        indexAxis: "y",
+        scales: {
+          x: { ticks: { color: "#8b949e", font: { size: 11 } }, grid: { color: "#21262d" }, beginAtZero: true },
+          y: { ticks: { color: "#79c0ff", font: { size: 10, family: "monospace" } }, grid: { color: "#21262d" } }
         }
       }
     });
@@ -220,7 +256,7 @@
     scanBtn.disabled = true;
     scanBtnText.textContent = "Scanning...";
     scanSpinner.classList.remove("d-none");
-    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">Fetching live data from Azure...</td></tr>`;
+    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">Fetching live data from Azure...</td></tr>`;
 
     try {
       const res = await fetch("/scan", {
@@ -232,7 +268,7 @@
       const data = await res.json();
 
       if (data.error) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
         return;
       }
 
@@ -243,14 +279,14 @@
       document.getElementById("topIp").textContent = data.top_ip;
       document.getElementById("scanTime").textContent = "Last scanned: " + data.scan_time + " (" + selectedDays + (selectedDays === 1 ? " day" : " days") + ")";
 
-      // Render attack timeline chart
+      // Render both charts
       if (data.chart_labels && data.chart_labels.length > 0) {
-        renderChart(data.chart_labels, data.chart_values);
+        renderCharts(data);
       }
 
       // Build table rows
       if (!data.flagged_ips || data.flagged_ips.length === 0) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">No brute force activity detected in this period.</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">No brute force activity detected in this period.</td></tr>`;
         return;
       }
 
@@ -280,7 +316,6 @@
 
         const windowStart = ip.WindowStart ? ip.WindowStart.replace("T", " ").split(".")[0] : "N/A";
         const account = ip.TargetedAccounts || "N/A";
-        const targetVMs = ip.TargetedVMs || "Unknown";
         const country = ip.Country || "N/A";
         const mitreID = ip.MitreID || "";
         const mitreName = ip.MitreTechnique || "";
@@ -294,7 +329,6 @@
           <td><strong>${ip.FailureCount}</strong> <small class="text-muted">in ${ip.WindowMinutes}m</small></td>
           <td><small>${windowStart}</small></td>
           <td><div class="account-text">${account}</div></td>
-          <td><small>${targetVMs}</small></td>
           <td><small>${country}</small></td>
           <td><small>${ip.ISP || "N/A"}</small></td>
           <td>${scoreBadge}</td>
@@ -306,7 +340,7 @@
       document.getElementById("resultsBody").innerHTML = rows;
 
     } catch (err) {
-      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Failed to connect to server: ${err.message}</td></tr>`;
+      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state" style="color:#f85149;">Failed to connect to server: ${err.message}</td></tr>`;
     } finally {
       scanBtn.disabled = false;
       scanBtnText.textContent = "▶ Run Scan";
