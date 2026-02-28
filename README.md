@@ -28,11 +28,13 @@ Open your browser to **http://localhost:5000**
 **Dashboard features:**
 - Day toggle — scan 1, 3, 7, 14, or 30 days of log data
 - Summary cards — Total Failed Logins, Flagged IPs, Known Malicious, Top Attacker IP
-- Attack Timeline chart — failed login volume per hour
-- Top Attacking IPs chart — ranked bar of highest-volume attackers
-- Results table — IP, failure count, accounts targeted, country, ISP, abuse score, MITRE tag, status
+- Attack Timeline chart — failed login volume per hour, shows when attacks peak
+- Top Attacking IPs chart — ranked horizontal bar of highest-volume attackers
+- Results table — IP, failure count, country, ISP, abuse score, MITRE technique, status
+- Click-to-reveal account names — accounts are hidden by default to protect privacy, click to expand
 - Color-coded abuse score badges (red / yellow / green)
-- CSV report saved locally on every scan
+- MITRE ATT&CK technique badges link directly to attack.mitre.org
+- CSV report saved locally to `reports/` on every scan
 
 ---
 
