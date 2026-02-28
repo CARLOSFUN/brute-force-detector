@@ -46,6 +46,19 @@ python main.py
 
 ---
 
+## Getting Started
+
+```bash
+git clone https://github.com/CARLOSFUN/brute-force-detector.git
+cd brute-force-detector
+```
+
+Then follow the setup steps below.
+
+> **Note:** `config.py` is not included in the repo for security reasons. You will need to create it manually using the template in the Configuration section below.
+
+---
+
 ## Setup
 
 ### 1. Install dependencies
