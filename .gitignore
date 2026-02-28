@@ -1,3 +1,6 @@
+# Never commit credentials
+config.py
+
 # Ignore generated reports
 brute_force_report_*.csv
 
