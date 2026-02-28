@@ -2,9 +2,7 @@
 # Edit these values before running the detector
 
 # Azure Log Analytics settings
-AZURE_TENANT_ID = "YOUR_TENANT_ID"
-AZURE_CLIENT_ID = "YOUR_CLIENT_ID"
-AZURE_CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+# No client ID or secret needed — authentication uses your Azure CLI login (az login)
 AZURE_WORKSPACE_ID = "YOUR_LOG_ANALYTICS_WORKSPACE_ID"
 
 # AbuseIPDB settings

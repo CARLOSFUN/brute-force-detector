@@ -2,19 +2,15 @@
 # Connects to Azure Log Analytics and pulls failed sign-in events
 
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
-from azure.identity import ClientSecretCredential
+from azure.identity import AzureCliCredential
 from datetime import timedelta
 import pandas as pd
 import config
 
 
 def get_credential():
-    """Authenticate to Azure using service principal credentials."""
-    return ClientSecretCredential(
-        tenant_id=config.AZURE_TENANT_ID,
-        client_id=config.AZURE_CLIENT_ID,
-        client_secret=config.AZURE_CLIENT_SECRET
-    )
+    """Authenticate to Azure using your existing Azure CLI login (az login)."""
+    return AzureCliCredential()
 
 
 def fetch_failed_logins():
