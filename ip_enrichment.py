@@ -3,6 +3,7 @@
 
 import requests
 import config
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def check_ip(ip: str) -> dict:
@@ -59,8 +60,9 @@ def enrich_flagged_ips(flagged_df):
     if flagged_df.empty:
         return flagged_df
 
-    print(f"[ip_enrichment] Checking {len(flagged_df)} IP(s) against AbuseIPDB...")
-    enrichment_results = [check_ip(ip) for ip in flagged_df["IPAddress"]]
+    print(f"[ip_enrichment] Checking {len(flagged_df)} IP(s) against AbuseIPDB (parallel)...")
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        enrichment_results = list(executor.map(check_ip, flagged_df["IPAddress"]))
     enrichment_df = pd.DataFrame(enrichment_results)
 
     merged = flagged_df.merge(enrichment_df, on="IPAddress", how="left")
