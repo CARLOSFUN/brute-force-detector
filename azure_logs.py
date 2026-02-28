@@ -19,33 +19,39 @@ def get_credential():
     return AzureCliCredential()
 
 
-def fetch_failed_logins():
+def fetch_failed_logins(lookback_hours=None):
     """
     Query Azure Log Analytics for failed sign-in events.
-    Returns a DataFrame with columns: TimeGenerated, IPAddress, UserPrincipalName, ResultDescription
+    Returns a DataFrame with columns: TimeGenerated, IPAddress, UserPrincipalName,
+    ResultDescription, Location, DeviceName, OperatingSystem
     """
+    if lookback_hours is None:
+        lookback_hours = config.LOOKBACK_HOURS
+
     credential = get_credential()
     client = LogsQueryClient(credential)
 
-    # KQL query — pulls failed Azure AD sign-ins
+    # KQL query — pulls failed Azure AD sign-ins including device details
     query = """
     SigninLogs
     | where TimeGenerated >= ago({hours}h)
     | where ResultType != "0"
-    | project TimeGenerated, IPAddress, UserPrincipalName, ResultType, ResultDescription, Location
+    | project TimeGenerated, IPAddress, UserPrincipalName, ResultType, ResultDescription, Location,
+              DeviceName = tostring(DeviceDetail.displayName),
+              OperatingSystem = tostring(DeviceDetail.operatingSystem)
     | order by TimeGenerated desc
-    """.format(hours=config.LOOKBACK_HOURS)
+    """.format(hours=lookback_hours)
 
     response = client.query_workspace(
         workspace_id=config.AZURE_WORKSPACE_ID,
         query=query,
-        timespan=timedelta(hours=config.LOOKBACK_HOURS)
+        timespan=timedelta(hours=lookback_hours)
     )
 
     if response.status == LogsQueryStatus.SUCCESS:
         data = response.tables[0]
         df = pd.DataFrame(data.rows, columns=data.columns)
-        print(f"[azure_logs] Fetched {len(df)} failed login events from the last {config.LOOKBACK_HOURS}h")
+        print(f"[azure_logs] Fetched {len(df)} failed login events from the last {lookback_hours}h")
         return df
     else:
         print(f"[azure_logs] Query failed: {response.partial_error}")

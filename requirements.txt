@@ -2,3 +2,4 @@ azure-monitor-query
 azure-identity
 pandas
 requests
+flask
