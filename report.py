@@ -3,6 +3,9 @@
 
 import pandas as pd
 from datetime import datetime
+import os
+
+REPORTS_DIR = "reports"
 
 
 def print_console_report(df: pd.DataFrame):
@@ -39,11 +42,12 @@ def print_console_report(df: pd.DataFrame):
 
 
 def save_csv_report(df: pd.DataFrame):
-    """Saves the full report to a timestamped CSV file."""
+    """Saves the full report to a timestamped CSV file in the reports/ folder."""
     if df.empty:
         return
 
+    os.makedirs(REPORTS_DIR, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"brute_force_report_{timestamp}.csv"
-    df.to_csv(filename, index=False)
-    print(f"[report] Report saved to {filename}")
+    filepath = os.path.join(REPORTS_DIR, f"brute_force_report_{timestamp}.csv")
+    df.to_csv(filepath, index=False)
+    print(f"[report] Report saved to {filepath}")
