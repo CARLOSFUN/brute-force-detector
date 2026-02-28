@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Brute Force Detector</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     body { background: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', sans-serif; }
 
@@ -41,12 +42,16 @@
     .status-reported  { background: #e3b3411a; color: #e3b341; border: 1px solid #e3b341; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
     .status-clean     { background: #2386361a; color: #3fb950; border: 1px solid #3fb950; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
 
+    .mitre-badge { background: #6e40c91a; color: #bc8cff; border: 1px solid #6e40c9; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-family: monospace; text-decoration: none; }
+    .mitre-badge:hover { background: #6e40c933; color: #d2a8ff; }
+
     .spinner-border { width: 1.2rem; height: 1.2rem; border-width: 2px; }
     .scan-time { color: #8b949e; font-size: 0.82rem; }
     .empty-state { color: #8b949e; padding: 40px 0; text-align: center; font-size: 0.95rem; }
     .ip-mono { font-family: monospace; font-size: 0.85rem; color: #79c0ff; }
-    .account-text { font-size: 0.78rem; color: #8b949e; max-width: 200px; word-break: break-all; }
+    .account-text { font-size: 0.78rem; color: #8b949e; max-width: 180px; word-break: break-all; }
     .section-label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+    .chart-container { position: relative; height: 220px; }
   </style>
 </head>
 <body>
@@ -108,6 +113,14 @@
     </div>
   </div>
 
+  <!-- Attack Timeline Chart -->
+  <div class="card p-3 mb-4" id="chartCard" style="display:none;">
+    <div class="section-label mb-3">Failed Login Activity</div>
+    <div class="chart-container">
+      <canvas id="attackChart"></canvas>
+    </div>
+  </div>
+
   <!-- Results Table -->
   <div class="card p-3">
     <div class="section-label mb-3">Flagged IPs</div>
@@ -123,12 +136,13 @@
             <th>Country</th>
             <th>ISP</th>
             <th>Abuse Score</th>
+            <th>MITRE</th>
             <th>Status</th>
           </tr>
         </thead>
         <tbody id="resultsBody">
           <tr>
-            <td colspan="9" class="empty-state">Run a scan to see results.</td>
+            <td colspan="10" class="empty-state">Run a scan to see results.</td>
           </tr>
         </tbody>
       </table>
@@ -139,6 +153,7 @@
 
 <script>
   let selectedDays = 1;
+  let attackChart = null;
 
   // Day toggle
   document.getElementById("dayToggle").addEventListener("click", function(e) {
@@ -149,6 +164,54 @@
     selectedDays = parseInt(btn.dataset.days);
   });
 
+  function renderChart(labels, values) {
+    const card = document.getElementById("chartCard");
+    card.style.display = "block";
+
+    if (attackChart) attackChart.destroy();
+
+    const ctx = document.getElementById("attackChart").getContext("2d");
+    attackChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Failed Logins",
+          data: values,
+          backgroundColor: "rgba(31, 111, 235, 0.5)",
+          borderColor: "#388bfd",
+          borderWidth: 1,
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#161b22",
+            borderColor: "#30363d",
+            borderWidth: 1,
+            titleColor: "#c9d1d9",
+            bodyColor: "#8b949e",
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#8b949e", font: { size: 10 }, maxRotation: 45 },
+            grid: { color: "#21262d" }
+          },
+          y: {
+            ticks: { color: "#8b949e", font: { size: 11 } },
+            grid: { color: "#21262d" },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
   async function runScan() {
     const scanBtn = document.getElementById("scanBtn");
     const scanBtnText = document.getElementById("scanBtnText");
@@ -157,7 +220,7 @@
     scanBtn.disabled = true;
     scanBtnText.textContent = "Scanning...";
     scanSpinner.classList.remove("d-none");
-    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">Fetching live data from Azure...</td></tr>`;
+    document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">Fetching live data from Azure...</td></tr>`;
 
     try {
       const res = await fetch("/scan", {
@@ -169,7 +232,7 @@
       const data = await res.json();
 
       if (data.error) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Error: ${data.error}</td></tr>`;
         return;
       }
 
@@ -180,11 +243,22 @@
       document.getElementById("topIp").textContent = data.top_ip;
       document.getElementById("scanTime").textContent = "Last scanned: " + data.scan_time + " (" + selectedDays + (selectedDays === 1 ? " day" : " days") + ")";
 
+      // Render attack timeline chart
+      if (data.chart_labels && data.chart_labels.length > 0) {
+        renderChart(data.chart_labels, data.chart_values);
+      }
+
       // Build table rows
       if (!data.flagged_ips || data.flagged_ips.length === 0) {
-        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state">No brute force activity detected in this period.</td></tr>`;
+        document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state">No brute force activity detected in this period.</td></tr>`;
         return;
       }
+
+      const mitreUrls = {
+        "T1110.001": "https://attack.mitre.org/techniques/T1110/001/",
+        "T1110.003": "https://attack.mitre.org/techniques/T1110/003/",
+        "T1110.004": "https://attack.mitre.org/techniques/T1110/004/",
+      };
 
       const rows = data.flagged_ips.map(ip => {
         const score = ip.AbuseConfidenceScore;
@@ -208,6 +282,12 @@
         const account = ip.TargetedAccounts || "N/A";
         const targetVMs = ip.TargetedVMs || "Unknown";
         const country = ip.Country || "N/A";
+        const mitreID = ip.MitreID || "";
+        const mitreName = ip.MitreTechnique || "";
+        const mitreUrl = mitreUrls[mitreID] || "#";
+        const mitreBadge = mitreID
+          ? `<a href="${mitreUrl}" target="_blank" class="mitre-badge" title="${mitreName}">${mitreID}</a><br><small style="color:#8b949e;font-size:0.7rem;">${mitreName}</small>`
+          : "N/A";
 
         return `<tr>
           <td><span class="ip-mono">${ip.IPAddress}</span></td>
@@ -218,6 +298,7 @@
           <td><small>${country}</small></td>
           <td><small>${ip.ISP || "N/A"}</small></td>
           <td>${scoreBadge}</td>
+          <td>${mitreBadge}</td>
           <td>${statusBadge}</td>
         </tr>`;
       }).join("");
@@ -225,7 +306,7 @@
       document.getElementById("resultsBody").innerHTML = rows;
 
     } catch (err) {
-      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="9" class="empty-state text-danger">Failed to connect to server: ${err.message}</td></tr>`;
+      document.getElementById("resultsBody").innerHTML = `<tr><td colspan="10" class="empty-state text-danger">Failed to connect to server: ${err.message}</td></tr>`;
     } finally {
       scanBtn.disabled = false;
       scanBtnText.textContent = "▶ Run Scan";

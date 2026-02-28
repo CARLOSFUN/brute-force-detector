@@ -38,6 +38,23 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
         if max_count >= config.FAILED_LOGIN_THRESHOLD:
             targeted_accounts = group["Account"].unique().tolist()
             targeted_vms = [v for v in group["Computer"].unique().tolist() if v]
+
+            # MITRE ATT&CK T1110 sub-technique classification
+            unique_count = len(targeted_accounts)
+            attempts_per_account = max_count / unique_count
+            if unique_count == 1:
+                # One account hammered repeatedly — Password Guessing
+                mitre_id = "T1110.001"
+                mitre_name = "Password Guessing"
+            elif attempts_per_account <= 2:
+                # Many accounts, few attempts each — Password Spraying
+                mitre_id = "T1110.003"
+                mitre_name = "Password Spraying"
+            else:
+                # Many accounts, many attempts — Credential Stuffing
+                mitre_id = "T1110.004"
+                mitre_name = "Credential Stuffing"
+
             flagged.append({
                 "IPAddress": ip,
                 "FailureCount": max_count,
@@ -46,6 +63,8 @@ def detect_brute_force(df: pd.DataFrame) -> pd.DataFrame:
                 "TargetedAccounts": ", ".join(targeted_accounts),
                 "UniqueAccountsTargeted": len(targeted_accounts),
                 "TargetedVMs": ", ".join(targeted_vms) if targeted_vms else "Unknown",
+                "MitreID": mitre_id,
+                "MitreTechnique": mitre_name,
             })
 
     if flagged:

@@ -47,6 +47,19 @@ def scan():
         malicious_count = int(enriched["IsMalicious"].sum()) if not enriched.empty and "IsMalicious" in enriched.columns else 0
         top_ip = enriched.iloc[0]["IPAddress"] if not enriched.empty else "None"
 
+        # Build hourly attack chart data from raw failed logins
+        chart_labels, chart_values = [], []
+        if not failed_logins.empty:
+            failed_logins["TimeGenerated"] = pd.to_datetime(failed_logins["TimeGenerated"], utc=True)
+            hourly = (
+                failed_logins
+                .groupby(failed_logins["TimeGenerated"].dt.floor("h"))
+                .size()
+                .reset_index(name="count")
+            )
+            chart_labels = hourly["TimeGenerated"].dt.strftime("%m/%d %H:%M").tolist()
+            chart_values = hourly["count"].tolist()
+
         return jsonify({
             "scan_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "days": days,
@@ -54,7 +67,9 @@ def scan():
             "flagged_count": flagged_count,
             "malicious_count": malicious_count,
             "top_ip": top_ip,
-            "flagged_ips": df_to_records(enriched)
+            "flagged_ips": df_to_records(enriched),
+            "chart_labels": chart_labels,
+            "chart_values": chart_values,
         })
 
     except Exception as e:
